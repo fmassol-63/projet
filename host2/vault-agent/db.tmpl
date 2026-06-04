@@ -1,0 +1,6 @@
+{{- with secret "zabbix/data/database" -}}
+DB_SERVER_HOST={{ .Data.data.host }}
+POSTGRES_DB={{ .Data.data.dbname }}
+POSTGRES_USER={{ .Data.data.username }}
+POSTGRES_PASSWORD={{ .Data.data.password }}
+{{- end }}
