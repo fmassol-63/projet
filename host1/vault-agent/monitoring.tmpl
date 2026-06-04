@@ -1,0 +1,4 @@
+{{- with secret "zabbix/data/monitoring" -}}
+SNMP_COMMUNITY={{ .Data.data.snmp_community }}
+SNMP_VERSION={{ .Data.data.snmp_version }}
+{{- end }}

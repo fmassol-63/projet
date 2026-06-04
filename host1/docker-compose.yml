@@ -1,0 +1,121 @@
+version: '3.8'
+
+networks:
+  zabbix-net:
+    driver: bridge
+
+volumes:
+  vault1-data:
+  postgres-data:
+  vault-secrets:
+
+services:
+
+  vault-1:
+    image: hashicorp/vault:1.17
+    container_name: vault-1
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "8200:8200"
+      - "8201:8201"
+    cap_add:
+      - IPC_LOCK
+    extra_hosts:
+      - "vault-2:192.168.200.171"
+    environment:
+      VAULT_ADDR: "http://0.0.0.0:8200"
+      VAULT_CLUSTER_ADDR: "http://192.168.200.170:8201"
+      VAULT_API_ADDR: "http://192.168.200.170:8200"
+    volumes:
+      - /home/fmassol/host1/vault-1.hcl:/tmp/vault.hcl:ro
+      - vault1-data:/vault/data
+    command: server -config=/tmp/vault.hcl
+    networks:
+      - zabbix-net
+
+  vault-agent-1:
+    image: hashicorp/vault:1.16
+    container_name: vault-agent-1
+    restart: unless-stopped
+    #user: "0:0"
+    depends_on:
+      - vault-1
+    environment:
+      VAULT_ADDR: "http://vault-1:8200"
+    volumes:
+      - /home/fmassol/host1/vault-agent/agent.hcl:/tmp/agent.hcl:ro
+      - /home/fmassol/host1/vault-agent/role_id:/vault/approle/role_id:ro
+      - /home/fmassol/host1/vault-agent/secret_id:/vault/approle/secret_id:ro
+      - /home/fmassol/host1/vault-agent/db.tmpl:/tmp/db.tmpl:ro
+      - /home/fmassol/host1/vault-agent/monitoring.tmpl:/tmp/monitoring.tmpl:ro
+      - vault-secrets:/vault/secrets
+    command: agent -config=/tmp/agent.hcl
+    networks:
+      - zabbix-net
+
+  zabbix-db:
+    image: postgres:15
+    container_name: zabbix-db
+    restart: unless-stopped
+    ports:
+      - "192.168.200.170:5432:5432"
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: zabbix
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "zabbix"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - zabbix-net
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
+    container_name: zabbix-server
+    restart: unless-stopped
+    depends_on:
+      zabbix-db:
+        condition: service_healthy
+    ports:
+      - "10051:10051"
+    extra_hosts:
+      - "zabbix-server-2:192.168.200.171"
+    environment:
+      DB_SERVER_HOST: zabbix-db
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: zabbix
+      ZBX_HANODENAME: "zabbix-node-1"
+      ZBX_HAMODE: "active"
+    volumes:
+      - vault-secrets:/vault/secrets:ro
+    networks:
+      - zabbix-net
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:alpine-7.0-latest
+    container_name: zabbix-web
+    restart: unless-stopped
+    depends_on:
+      - zabbix-server
+    ports:
+      - "80:8080"
+    extra_hosts:
+      - "zabbix-server-2:192.168.200.171"
+    environment:
+      DB_SERVER_HOST: zabbix-db
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: zabbix
+      ZBX_SERVER_HOST: "zabbix-server,zabbix-server-2"
+      ZBX_SERVER_PORT: "10051"
+      ZBX_SERVER_NAME: "Zabbix HA Cluster"
+      PHP_TZ: "Europe/Paris"
+    networks:
+      - zabbix-net
