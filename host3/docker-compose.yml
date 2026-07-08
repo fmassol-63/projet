@@ -39,8 +39,9 @@ services:
     extra_hosts:
       - "zabbix-db:192.168.200.170"
       - "zabbix-db-standby:192.168.200.171"
+    entrypoint: ["/usr/local/bin/entrypoint-witness.sh"]
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PRIMARY_HOST: "192.168.200.170"
       REPMGR_PASSWORD: ${REPMGR_PASSWORD}
     volumes:
       - repmgr-witness-data:/var/lib/postgresql/data
