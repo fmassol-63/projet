@@ -8,7 +8,8 @@ volumes:
   vault2-data:
   vault-secrets:
   zabbix-proxy-data:
-
+  postgres-standby-data:
+  
 services:
 
   vault-2:
@@ -53,7 +54,8 @@ services:
       - zabbix-net
 
   zabbix-db-standby:
-    build: ./repmgr-pg
+    build:
+      context: ./repmgr
     container_name: zabbix-db-standby
     restart: unless-stopped
     ports:
@@ -63,17 +65,14 @@ services:
     entrypoint: ["/usr/local/bin/entrypoint-standby.sh"]
     environment:
       POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PRIMARY_HOST: "192.168.200.170"
       REPMGR_PASSWORD: ${REPMGR_PASSWORD}
     volumes:
       - postgres-standby-data:/var/lib/postgresql/data
-      - ./repmgr-pg/repmgr.conf:/etc/repmgr.conf:ro
-    entrypoint: ["/bin/bash", "-c", "sleep infinity"]  # démarrage manuel contrôlé, voir 2.2
+      - ./repmgr/repmgr.conf:/etc/repmgr.conf:ro
     networks:
       - zabbix-net
-
-  volumes:
-    postgres-standby-data:
 
   zabbix-server-2:
     image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
