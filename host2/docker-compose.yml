@@ -60,9 +60,11 @@ services:
       - "192.168.200.171:5432:5432"
     extra_hosts:
       - "zabbix-db:192.168.200.170"
+    entrypoint: ["/usr/local/bin/entrypoint-standby.sh"]
     environment:
       POSTGRES_USER: zabbix
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PRIMARY_HOST: "192.168.200.170"
+      REPMGR_PASSWORD: ${REPMGR_PASSWORD}
     volumes:
       - postgres-standby-data:/var/lib/postgresql/data
       - ./repmgr-pg/repmgr.conf:/etc/repmgr.conf:ro
