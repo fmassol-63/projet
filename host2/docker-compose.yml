@@ -52,6 +52,27 @@ services:
     networks:
       - zabbix-net
 
+  zabbix-db-standby:
+    build: ./repmgr-pg
+    container_name: zabbix-db-standby
+    restart: unless-stopped
+    ports:
+      - "192.168.200.171:5432:5432"
+    extra_hosts:
+      - "zabbix-db:192.168.200.170"
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-standby-data:/var/lib/postgresql/data
+      - ./repmgr-pg/repmgr.conf:/etc/repmgr.conf:ro
+    entrypoint: ["/bin/bash", "-c", "sleep infinity"]  # démarrage manuel contrôlé, voir 2.2
+    networks:
+      - zabbix-net
+
+  volumes:
+    postgres-standby-data:
+
   zabbix-server-2:
     image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
     container_name: zabbix-server-2
