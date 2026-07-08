@@ -32,6 +32,18 @@ services:
     networks:
       - zabbix-net
 
+  haproxy:
+    image: haproxy:2.9
+    container_name: haproxy-pg
+    restart: unless-stopped
+    ports:
+      - "5433:5432"   # 5433 pour éviter conflit avec le port 5432 déjà utilisé par repmgr-witness sur .172
+      - "7000:7000"
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - zabbix-net
+
   repmgr-witness:
     build:
       context: ./repmgr
