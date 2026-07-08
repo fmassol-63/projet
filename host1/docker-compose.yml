@@ -125,9 +125,10 @@ services:
     ports:
       - "80:8080"
     extra_hosts:
-      - "zabbix-server-2:192.168.200.171"
+      - "zabbix-db:192.168.200.172"
     environment:
       DB_SERVER_HOST: zabbix-db
+      DB_SERVER_PORT: "5433"
       POSTGRES_USER: zabbix
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: zabbix
