@@ -74,6 +74,17 @@ services:
     networks:
       - zabbix-net
 
+  pg-check:
+    build:
+      context: ./pg-check
+    container_name: pg-check
+    restart: unless-stopped
+    network_mode: "service:zabbix-db-standby"
+    environment:
+      POSTGRES_USER: zabbix
+    depends_on:
+      - zabbix-db-standby
+
   zabbix-server-2:
     image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
     container_name: zabbix-server-2
