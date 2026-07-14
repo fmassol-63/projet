@@ -32,20 +32,34 @@ services:
     networks:
       - zabbix-net
 
+  haproxy:
+    image: haproxy:2.9
+    container_name: haproxy-pg
+    restart: unless-stopped
+    ports:
+      - "5433:5432"   # 5433 pour éviter conflit avec le port 5432 déjà utilisé par repmgr-witness sur .172
+      - "7000:7000"
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - zabbix-net
+
   repmgr-witness:
-    build: ./repmgr
+    build:
+      context: ./repmgr
     container_name: repmgr-witness
     restart: unless-stopped
+    ports:
+      - "192.168.200.172:5432:5432"
     extra_hosts:
       - "zabbix-db:192.168.200.170"
-      - "zabbix-db-standby:192.168.200.171"
+    entrypoint: ["/usr/local/bin/entrypoint-witness.sh"]
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PRIMARY_HOST: "192.168.200.170"
       REPMGR_PASSWORD: ${REPMGR_PASSWORD}
     volumes:
       - repmgr-witness-data:/var/lib/postgresql/data
       - ./repmgr/repmgr.conf:/etc/repmgr.conf:ro
-    ports:
-      - "5432:5432"
     networks:
       - zabbix-net

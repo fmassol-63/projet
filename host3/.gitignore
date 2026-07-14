@@ -1,0 +1,6 @@
+.env
+vault-agent/role_id
+vault-agent/secret_id
+vault-anssi/
+*.token
+*.unseal

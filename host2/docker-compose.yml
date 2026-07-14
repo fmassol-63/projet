@@ -8,7 +8,8 @@ volumes:
   vault2-data:
   vault-secrets:
   zabbix-proxy-data:
-
+  postgres-standby-data:
+  
 services:
 
   vault-2:
@@ -52,6 +53,38 @@ services:
     networks:
       - zabbix-net
 
+  zabbix-db-standby:
+    build:
+      context: ./repmgr
+    container_name: zabbix-db-standby
+    restart: unless-stopped
+    ports:
+      - "192.168.200.171:5432:5432"
+    extra_hosts:
+      - "zabbix-db:192.168.200.170"
+    entrypoint: ["/usr/local/bin/entrypoint-standby.sh"]
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PRIMARY_HOST: "192.168.200.170"
+      REPMGR_PASSWORD: ${REPMGR_PASSWORD}
+    volumes:
+      - postgres-standby-data:/var/lib/postgresql/data
+      - ./repmgr/repmgr.conf:/etc/repmgr.conf:ro
+    networks:
+      - zabbix-net
+
+  pg-check:
+    build:
+      context: ./pg-check
+    container_name: pg-check
+    restart: unless-stopped
+    network_mode: "service:zabbix-db-standby"
+    environment:
+      POSTGRES_USER: zabbix
+    depends_on:
+      - zabbix-db-standby
+
   zabbix-server-2:
     image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
     container_name: zabbix-server-2
@@ -61,10 +94,11 @@ services:
     ports:
       - "10051:10051"
     extra_hosts:
-      - "zabbix-db:192.168.200.170"
+      - "zabbix-db:192.168.200.172"
       - "zabbix-server:192.168.200.170"
     environment:
       DB_SERVER_HOST: zabbix-db
+      DB_SERVER_PORT: "5433"
       POSTGRES_USER: zabbix
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: zabbix
